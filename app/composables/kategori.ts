@@ -1,73 +1,102 @@
-import { INITIAL_VALUE_KATEGORI, type TKategoriDocument } from "~/constants/kategori";
+import type {
+  TKategoriCollection,
+  TKategoriDocument,
+  TKategoriCreatePayload,
+  TKategoriUpdatePayload,
+  TKategoriResponse,
+} from "~/types/kategori";
+import { computed } from "vue";
+import { GET, POST, PATCH, DELETE } from "~/composables/fetch";
 
 export const useKategori = () => {
   const baseURL = `${import.meta.env.VITE_API_KAS_GEREJA}/kategori`;
 
-  const kategoriCollection = useState<TKategoriDocument[]>(
+  const kategoriCollection = useState<TKategoriCollection>(
     "kategoriCollection",
-    (): TKategoriDocument[] => []
-  );
-  const kategoriDocument = useState<TKategoriDocument>(
-    "kategoriDocument",
-    (): TKategoriDocument => ({ ...INITIAL_VALUE_KATEGORI })
+    () => []
   );
 
-  const listOptionKategori = computed(() => {
-    return kategoriCollection.value.map(kategori => {
-      return {
-        title: kategori.nama,
-        value: kategori.id
-      }
-    })
-  })
+  const kategoriDocument = useState<TKategoriDocument | null>(
+    "kategoriDocument",
+    () => null
+  );
+
   const isLoading = useState<boolean>("kategoriLoading", () => false);
+
+  // ── Collection ───────────────────────────────────────────────────────────
 
   const getKategoriCollection = async () => {
     isLoading.value = true;
     try {
-      kategoriCollection.value = await GET<TKategoriDocument[]>(baseURL, {});
+      kategoriCollection.value = await GET<TKategoriCollection>(
+        baseURL,
+        {}
+      );
     } catch (err) {
-      console.log("[getKategoriCollection]", err);
-    }
-    isLoading.value = false;
-  };
-
-  const getKategoriDocument = async (id: number) => {
-    isLoading.value = true;
-    try {
-      const response = await GET<{ data: TKategoriDocument }>(`${baseURL}/${id}`, {});
-      kategoriDocument.value = response.data;
-    } catch (err) {
-      console.error("[getKategoriDocument]", err);
-    }
-    isLoading.value = false;
-  };
-
-  const insertKategori = async (payload: Omit<TKategoriDocument, "id">) => {
-    isLoading.value = true;
-    try {
-      await POST<{ data: TKategoriDocument }>(baseURL, payload);
-      await getKategoriCollection();
-    } catch (err) {
-      console.error("[insertKategori]", err);
+      console.error("[getKategoriCollection]", err);
     } finally {
       isLoading.value = false;
     }
   };
 
-  // UPDATE
-  const updateKategori = async (id: number, payload: Partial<TKategoriDocument>) => {
+  // ── Document (single) ────────────────────────────────────────────────────
+
+  const getKategoriDocument = async (id: number) => {
     isLoading.value = true;
     try {
-      await PATCH<{ data: TKategoriDocument }>(`${baseURL}/${id}`, payload);
-      await getKategoriCollection();
+      const response = await GET<{ data: TKategoriDocument }>(
+        `${baseURL}/${id}`,
+        {}
+      );
+      kategoriDocument.value = response.data;
     } catch (err) {
-      console.error("[updateKategori]", err);
+      console.error("[getKategoriDocument]", err);
+      kategoriDocument.value = null;
+    } finally {
+      isLoading.value = false;
     }
-    isLoading.value = false;
   };
 
-  // DELETE
+  // ── Create ───────────────────────────────────────────────────────────────
+
+  const insertKategori = async (payload: TKategoriCreatePayload) => {
+    isLoading.value = true;
+    try {
+      const response = await POST<TKategoriResponse>(baseURL, payload);
+      await getKategoriCollection();
+      return response;
+    } catch (err) {
+      console.error("[insertKategori]", err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // ── Update ───────────────────────────────────────────────────────────────
+
+  const updateKategori = async (
+    id: number,
+    payload: TKategoriUpdatePayload
+  ) => {
+    isLoading.value = true;
+    try {
+      const response = await PATCH<TKategoriResponse>(
+        `${baseURL}/${id}`,
+        payload
+      );
+      await getKategoriCollection();
+      return response;
+    } catch (err) {
+      console.error("[updateKategori]", err);
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // ── Delete ───────────────────────────────────────────────────────────────
+
   const deleteKategori = async (id: number) => {
     isLoading.value = true;
     try {
@@ -75,23 +104,33 @@ export const useKategori = () => {
       await getKategoriCollection();
     } catch (err) {
       console.error("[deleteKategori]", err);
+      throw err;
+    } finally {
+      isLoading.value = false;
     }
-    isLoading.value = false;
   };
 
+  // ── Reset ────────────────────────────────────────────────────────────────
+
   const resetKategoriDocument = () => {
-    kategoriDocument.value = { ...INITIAL_VALUE_KATEGORI };
+    kategoriDocument.value = null;
   };
 
   return {
     kategoriCollection,
     kategoriDocument,
-    listOptionKategori,
+    isLoading,
     getKategoriCollection,
     getKategoriDocument,
     insertKategori,
     updateKategori,
     deleteKategori,
-    resetKategoriDocument
+    resetKategoriDocument,
+    listOptionKategori: computed(() =>
+      kategoriCollection.value.map((k) => ({
+        title: k.nama,
+        value: k.id,
+      }))
+    ),
   };
 };

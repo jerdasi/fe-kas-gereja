@@ -8,11 +8,16 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  devServer: {
+    host: '0.0.0.0',
+    port: 3000 // optional
+  },
+
   routeRules: {
     '/': { prerender: true }
   },
 
-  compatibilityDate: '2025-01-15',
+  compatibilityDate: '2026-09-13',
 
   eslint: {
     config: {
